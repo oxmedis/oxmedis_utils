@@ -14,19 +14,42 @@ class data_reader():
         )
         return 
 
-    def read_DcmMetadata(self):
+    def read_DcmMetadata(self,read_list='ALL'):
         '''Reads filepath, returns dictionary'''
+        #of read is a list it will only read those files.
         ds = pydicom.read_file(self.path, force=True)
+        
         dcm_meta_dic={}
         tags=(list(ds.dir()))
 
-        for dcmtag in tags:
-            if hasattr(ds, dcmtag):
-                dcm_meta_dic[dcmtag] = str(getattr(ds, dcmtag))
-            else:
-                dcm_meta_dic[dcmtag] = None
+        if read_list == 'ALL':
+            #this will read all/some duplicates
+            for dcmtag in tags:
+                if hasattr(ds, dcmtag):
+                    dcm_meta_dic[dcmtag] = str(getattr(ds, dcmtag))
+                else:
+                    dcm_meta_dic[dcmtag] = None
 
-        return dcm_meta_dic, img
+            #reads dcm based on values feild (captures more than just ds.dir())
+
+            val = list(ds.values())
+            for i in range(len(val)):
+                dcmtag = str(val[i]).split(')')[0]
+                dcmval= str(val[i]).split(')')[1]
+                dcm_meta_dic[dcmtag] = str(dcmval)
+        
+        else:
+            val = list(ds.values())
+
+            for i in read_list:
+                dcmtag = i
+
+                for i in range(len(val)):
+                    dcmtag = str(val[i]).split(')')[0]
+                    dcmval= str(val[i]).split(')')[1]
+                    dcm_meta_dic[dcmtag] = str(dcmval)
+
+        return dcm_meta_dic, ds
 
     def readCsv(self):
         '''Reads csv

@@ -20,10 +20,10 @@ class data_reader():
         ds = pydicom.read_file(self.path, force=True)
         
         dcm_meta_dic={}
-        tags=(list(ds.dir()))
-
         if read_list == 'ALL':
             #this will read all/some duplicates
+            tags=(list(ds.dir()))
+
             for dcmtag in tags:
                 if hasattr(ds, dcmtag):
                     dcm_meta_dic[dcmtag] = str(getattr(ds, dcmtag))
@@ -39,15 +39,26 @@ class data_reader():
                 dcm_meta_dic[dcmtag] = str(dcmval)
         
         else:
-            val = list(ds.values())
-
             for i in read_list:
-                dcmtag = i
-
-                for i in range(len(val)):
-                    dcmtag = str(val[i]).split(')')[0]
-                    dcmval= str(val[i]).split(')')[1]
-                    dcm_meta_dic[dcmtag] = str(dcmval)
+                try:
+                    dcmval=ds[i].value
+                    dcm_meta_dic[i] = str(dcmval)
+                except:
+                    if i == (40, 769):
+                        dcm_meta_dic[i]= 'None'
+                    else:
+                        try:
+                            #get breach data 
+                            d = ds[0x0040, 0xa730][3]
+                            tmp= {}
+                            for j in d.iterall():
+                                if str(j).find('(0040, a160)') == -1:
+                                    pass
+                                else:
+                                    dcm_meta_dic[i]=str(j.value)
+                                
+                        except:
+                            dcm_meta_dic[i] = None
 
         return dcm_meta_dic, ds
 

@@ -22,23 +22,25 @@ class ddh_preprocessing():
         self.unlabed_val = 'unlabeled'
 
         #what tag to check if it has burned in annotations (this means patient data in image)
-        self.tag_burned = 'BurnedInAnnotation'
+        self.tag_burned = (0x0028,0x0301)
         self.tag_burned_val= 'YES'
         self.burned_dir = 'burned'
 
         #file naming, accessionNumber_INstance Number
-        self.name_ls=['AccessionNumber',(0x0020, 0x0013)]
+        self.name_ls=[(0x0008, 0x0050),(0x0020, 0x0013)]
         #modality is checked and put into other if SR (report)
         self.other_tag = (0x0008, 0x0060)
         self.other_tag_val = 'SR'
 
         self.img_type ='.png'
 
-        self.read_ls = ['AccessionNumber','BurnedInAnnotation',(0x0020, 0x0013), (0x0008, 0x0060), (0x0008, 0x0104), (0x0040,0xa160)]
-        #MODALITY = (0008, 0060) 
+        self.read_ls = [(0x0008, 0x0050), (0x0028,0x0301),(0x0020, 0x0013), (0x0008, 0x0060), (0x0010, 0x0040),(0x0040,0x730)]
+        #accession number = (0008, 0050) 
+        #burned in annotation =  (0028,0301)
         #instance numbers (0020, 0013)
-        #breach (0x0008, 0x0104) 
-        #graf deats (0x0040,0xa160)
+        #sex (0010, 0040)
+        #MODALITY = (0008, 0060) 
+        #breach graf deats in text (0x0040, 0xa730)
         self.im_arr_L='/home/allent/Desktop/repos/oxmedis_utils/data/left.png'
         return       
     
@@ -97,14 +99,14 @@ class ddh_preprocessing():
                 for patient_scan in patient_scans_ls:
                     dcm_meta, img = data_reader.data_reader(str(patient_scan)).read_DcmMetadata(read_list = self.read_ls)
 
-                    if dcm_meta[self.other_tag].find(self.other_tag_val)!=-1:
+                    if dcm_meta[self.other_tag]==self.other_tag_val:
                         #put whatever contains the feild that you wanted to remove for other
                         #ex. modality = SR is report
                         tag_value = self.other
                     else:
                         tag_value = dcm_meta[self.tag_burned].split(':')[-1].strip("'").strip(" '")
                         tag_value=tag_value.upper()
-                        print(tag_value)
+                        #print(tag_value)
                     
                     new_name = ''
 
@@ -124,7 +126,7 @@ class ddh_preprocessing():
                         pass
                     else:
                         img_arr = img.pixel_array
-                        print(img_arr[600:700,:100].mean())
+                        #print(img_arr[600:700,:100].mean())
                         if img_arr[600:700,:100].mean()==0:
                             tag_value = self.unlabed_val
                         else:
@@ -134,7 +136,7 @@ class ddh_preprocessing():
 
 
                     #save folder new location
-                    print(tag_value)
+                    #print(tag_value)
                     if tag_value==self.tag_burned_val:
                         dest = self.output_dir.joinpath(self.burned_dir).joinpath(patient_path.name,new_name+self.img_type)
                     elif tag_value ==self.unlabed_val:
@@ -152,12 +154,12 @@ class ddh_preprocessing():
                         else:
                             shutil.copyfile(patient_scan,dest)
                     
-                    dcm_meta['name']=patient_scan
+                    dcm_meta['original path']=patient_scan
                     all_tags.append(dcm_meta)
+                    print(all_tags)
             
         df = pd.DataFrame(all_tags)
         if save_dcmMeta_csv == True:
-            df.pop('name')
             df.to_csv(f"{self.output_dir}/img_meta_data.csv", index=None)
 
 

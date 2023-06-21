@@ -4,7 +4,7 @@ Use the following commands to download.
 
 ```
 git clone 
-cd radutils
+cd oxmedis_utils
 pip install -e . 
 ```
 

@@ -34,7 +34,9 @@ class ddh_preprocessing():
 
         self.img_type ='.png'
 
-        self.read_ls = [(0x0008, 0x0050), (0x0028,0x0301),(0x0020, 0x0013), (0x0008, 0x0060), (0x0010, 0x0040),(0x0040,0x730)]
+        #To do: set theses as a dictionary with keys would make more s
+        self.read_ls = [(0x0008, 0x0050), (0x0028,0x0301), (0x0020, 0x0013), (0x0008, 0x0060), (0x0010, 0x0040),(0x0040,0x730)]
+        self.read_ls_names = ['Accession Number','Burned in Annotation', 'Instance Number', 'Sex', 'Modality', 'TextField']
         #accession number = (0008, 0050) 
         #burned in annotation =  (0028,0301)
         #instance numbers (0020, 0013)
@@ -71,22 +73,61 @@ class ddh_preprocessing():
         return exists
     
     
-    def add_LR(self,new_name,img_arr):
+    def add_LR(self,new_name,img_arr,dcm_meta):
         '''takes array of image you define for right and left and checks the image array for the corresponding input image'''
         tag_val= self._check_arr2_in_arr1(img_arr)
 
         if tag_val == True:
             new_name = new_name+'_L'
+            dcm_meta['Hip']='L'
         elif tag_val == False:
             new_name = new_name+'_R'
+            dcm_meta['Hip']='R'
         else:
             new_name = new_name+'_noLR'
-        return new_name
+            dcm_meta['Hip']='noLR'
+
+        return new_name, dcm_meta
+    
+    def _clean_df_colnames(self, df):
+        # first replace column names with read_ls_names, then also take columns if they havve break and split into other columns.
+        for col in range(len(self.read_ls_names)):
+            col_name_old = df.columns[col]
+            col_name_new = self.read_ls_names[col]
+            df.rename(columns={col_name_old: col_name_new}, inplace=True)
+        return df
+    
+    def _clean_df_text_column_split(self, df):
+
+        df2=df['TextField'].str.replace('\n', '')
+        df3=df2.str.replace('<BR>', '')
+        #check if it contains, if so add the following
+        #start with clinical history
+        df_tmp= df3.str.contains("Clinical History : ")
+        idx=0
+        df4=df3
+        for val in df_tmp:
+            if val == True:
+                df4[idx] = (df3[idx].split("Clinical History : "))[1]
+                df4[idx] = (df4[idx].split(':'))[0]
+
+                df4[idx] = df4[idx].replace('US Hips','')
+                df4[idx] = df4[idx].replace('Clinical Details','')
+            else:
+                df4[idx]=None
+            idx=idx+1
+
+        df4 = df4.replace('',None)
+        df['Clinical History'] 
+            
+        #add new column df to the end of df
+
+        return df
+
 
     def _sort(self, save_dcmMeta_csv=True):
 
         all_tags = []
-
         all_patient_paths = list(self.input_dir.iterdir())
 
         for patient_path in all_patient_paths:
@@ -132,7 +173,7 @@ class ddh_preprocessing():
                         else:
                             tag_value = 'labeled'
                         
-                        new_name = self.add_LR(new_name,img_arr)
+                        new_name,dcm_meta = self.add_LR(new_name,img_arr,dcm_meta)
 
 
                     #save folder new location
@@ -155,10 +196,16 @@ class ddh_preprocessing():
                             shutil.copyfile(patient_scan,dest)
                     
                     dcm_meta['original path']=patient_scan
+                    dcm_meta['tag_data']=tag_value
+
                     all_tags.append(dcm_meta)
                     print(all_tags)
+    
             
         df = pd.DataFrame(all_tags)
+        df = self._clean_df_colnames(df)
+        df = self._clean_df_text_column_split(df)
+
         if save_dcmMeta_csv == True:
             df.to_csv(f"{self.output_dir}/img_meta_data.csv", index=None)
 

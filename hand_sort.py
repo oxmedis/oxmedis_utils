@@ -23,21 +23,14 @@ class handy_preprocessing():
         #what tag to check if it has burned in annotations (this means patient data in image)
         self.tag_burned = (0x0028,0x0301)
 
-        #file naming, AccessionNumber_InstanceNumber
-        self.name_ls=[(0x0008, 0x0050),(0x0020, 0x0013)]
+        #file naming, AnonPatientID_InstanceNumber
+        self.name_ls=[(0x0010, 0x0020),(0x0020, 0x0013)]
 
         self.img_type ='.png'
 
         #To do: set theses as a dictionary with keys would make more s
-        self.read_ls = [(0x0008, 0x0050), (0x0020, 0x0013), (0x0010, 0x0040), (0x0028,0x0301), (0x0040,0x730)]
-        self.read_ls_names = ['Accession Number', 'Instance Number','Sex','','Burned in Annotation', 'TextField']
-        #accession number = (0008, 0050) 
-        #instance numbers (0020, 0013)
-        #sex (0010, 0040)
-        #sex (0010, 0040)
-        #sex (0010, 0040)    
-        
-        #burned in annotation =  (0028,0301)
+        self.read_ls = [(0x0010, 0x0020),(0x0020, 0x0013), (0x0008, 0x0020), (0x0008,0x002a),(0x0010,0x0040),(0x0010,0x0030),(0x0008,0x1030),(0x0020,0x0020),(0x0020,0x0062),(0x0008,0x0070),(0x0028,0x0301)]
+        self.read_ls_names = ['PatientID','Instance Number','Study Date', 'Aquisition DateTime','Sex','DOB','Study Discription', 'Patient Orientation','Image Laterality','Manufacturer','Burned in Annotation']
         return       
     
     def _clean_df_colnames(self, df):
@@ -61,8 +54,9 @@ class handy_preprocessing():
         return new_name
 
 
-    def _combine_csvs(self):
-        return
+    def _combine_csvs(self, csv_orig, csv_new):
+        csv=1
+        return csv
 
     def _sort(self, save_dcmMeta_csv=True):
 
@@ -70,22 +64,22 @@ class handy_preprocessing():
         all_patient_paths = list(self.input_dir.iterdir())
 
         for patient_path in all_patient_paths:
-            #read all folders for each 
-            if str(patient_path)[-3:]=='xml':
-                pass
-            else:
-                patient_scans_ls = list(patient_path.iterdir())
+                #save raw data folder (copy original folder)
+            dest = self.output_dir.joinpath(self.image_dir).joinpath(patient_path.name,self.raw_dir)
+            if not dest.is_dir():
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(Path(patient_path),dest)
 
-                for patient_scan in patient_scans_ls:
-                    dcm_meta, img = data_reader.data_reader(str(patient_scan)).read_DcmMetadata()
+            #iterate through patient scans
+            patient_scans_ls = list(patient_path.iterdir())
+            for patient_scan in patient_scans_ls:
+                #read all folders for each 
+                if str(patient_scan)[-3:]=='xml':
+                    pass
+                else:
+                    dcm_meta, img = data_reader.data_reader(str(patient_scan)).read_DcmMetadata(read_list = self.read_ls)
 
                     new_name = self.get_name_from_tags(dcm_meta)
-
-                    #save raw data folder (copy original folder)
-                    dest = self.output_dir.joinpath(self.image_dir).joinpath(patient_path.name,self.raw_dir)
-                    if not dest.is_dir():
-                        dest.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copyfile(patient_path+patient_scan,dest)
 
                     #save image dir
                     dest = self.output_dir.joinpath(self.image_dir).joinpath(patient_path.name,new_name+self.img_type)
@@ -99,17 +93,18 @@ class handy_preprocessing():
 
                     all_tags.append(dcm_meta)
                     print(all_tags)
-            
+        
         df = pd.DataFrame(all_tags)
         df = self._clean_df_colnames(df)
-        df = self._clean_df_text_column_split(df)
+        #df = self._clean_df_text_column_split(df)
 
         if save_dcmMeta_csv == True:
             dest = self.output_dir.joinpath(self.labels_dir)
             if not dest.is_dir():
-                dest.parent.mkdir(parents=True, exist_ok=True)
-
-            df.to_csv(f"{self.labels_dir}/dataset_metadata_"+datetime.datetime+".csv", index=None)
+                dest.mkdir(parents=True, exist_ok=True)
+            
+            current_time = (str(datetime.datetime.now())[:10])
+            df.to_csv(f"{dest}/dataset_metadata_"+current_time+".csv", index=None)
 
 
 if __name__ == "__main__":

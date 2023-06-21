@@ -20,6 +20,7 @@ class data_reader():
         ds = pydicom.read_file(self.path, force=True)
         
         dcm_meta_dic={}
+        
         if read_list == 'ALL':
             #this will read all/some duplicates
             tags=(list(ds.dir()))
@@ -31,7 +32,6 @@ class data_reader():
                     dcm_meta_dic[dcmtag] = None
 
             #reads dcm based on values feild (captures more than just ds.dir())
-
             val = list(ds.values())
             for i in range(len(val)):
                 dcmtag = str(val[i]).split(')')[0]

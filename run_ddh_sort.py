@@ -46,6 +46,18 @@ class ddh_preprocessing():
         self.im_arr_L='/home/allent/Desktop/repos/oxmedis_utils/data/left.png'
         return       
     
+    def get_name_from_tags(self, dcm_meta):
+        new_name = ''
+        count = 0
+        for tag in self.name_ls:
+            if count == 0:
+                new_name = dcm_meta[tag].split(':')[-1].strip("'").strip(" '")
+            else:
+                new_name = new_name+'_'+dcm_meta[tag].split(':')[-1].strip("'").strip(" '")
+            count = count+1
+        
+        return new_name
+
     def _check_arr2_in_arr1(self, img_arr):
         '''checks if array 2 is in array 1'''
         #loop in image for same size array and check the number of pixels = 255
@@ -149,16 +161,7 @@ class ddh_preprocessing():
                         tag_value=tag_value.upper()
                         #print(tag_value)
                     
-                    new_name = ''
-
-                    count = 0
-                    for tag in self.name_ls:
-                        if count == 0:
-                            new_name = dcm_meta[tag].split(':')[-1].strip("'").strip(" '")
-                        else:
-                            new_name = new_name+'_'+dcm_meta[tag].split(':')[-1].strip("'").strip(" '")
-                        count = count+1
-
+                    new_name = self.get_name_from_tags(dcm_meta)
 
                     #check/add if annotations are in im_array
                     if tag_value==self.other:

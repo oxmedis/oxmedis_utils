@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+import pandas as pd
+
+
+# ### Rachel data
+#Import datasheet
+
+df_1 = pd.read_excel("scaphxr.xlsx")
+df_1.drop(['Best Hosp No.', 'NHS number', 'Surname','Forenames','Request date', 'Accession'], axis=1, inplace=True)
+df_1.head(3)
+
+#Format DOB/event date/examination
+
+df_1['DOB'] = df_1['DOB'].astype(str)
+df_1['Event Date'] = df_1['Event Date'].astype(str)
+df_1['Examination'] = df_1['Examination'].astype(str)
+df_1['Examination'] = df_1['Age At Event'].astype(str)
+df_1['Year'] = df_1['Year'].astype(str)
+df_1['Rep Text'] = df_1['Rep Text'].astype(str)
+
+df_1['DOB'] = df_1['DOB'].str.replace("-", "")
+df_1['Event Date'] = df_1['Event Date'].str.replace("-", "")
+
+#Split Examination into modality/anatomy/laterality
+
+df_1["Modality"] = df_1["Examination"].str[:1]
+df_1["Anatomy"] = df_1["Examination"].str[1:4]
+df_1["Laterality"] = df_1["Examination"].str[4:]
+df_1.drop(['Examination'], axis=1, inplace = True)
+
+#Merge Rep text
+
+df_1 = df_1.groupby(['Year', 'DOB','Event Date', 'Age At Event'])['Rep Text'].apply(' /// '.join).reset_index()
+
+
+#Make new column of request text
+
+df_1[['Rep Text','Req Text']] = df_1['Rep Text'].str.split('///', 1, expand=True)
+
+# ### Allie data
+
+#Import Allie's metadata
+
+df_2 = pd.read_excel("allie_data.xlsx")
+df_2.head(3)
+
+
+#Format DOB/Event Date/Laterality
+
+df_2['DOB'] = df_2['DOB'].astype(str)
+df_2['Event Date'] = df_2['Study Date'].astype(str)
+df_2['Laterality'] = df_2['Image Laterality'].astype(str)
+df_2.drop(['Burned in Annotation','Study Date', 'Image Laterality','Aquisition DateTime'], axis=1, inplace = True)
+
+df_2.rename(columns={'Boarder Density': 'Border Density','original scan':'Original Scan', 'Study Discription':'Study Description'}, inplace=True)
+
+
+df_2.head(3)
+
+
+# ### Merge data
+
+
+#Merge Rachel datasheet and Allie's datasheet
+
+merged_df = pd.merge(df_1, df_2, on =["DOB",'Event Date'])
+
+
+merged_df.head(2500)
+merged_df.to_excel('scaphoid_master.xlsx', index=False)
+merged_df.drop_duplicates(subset=['DOB','Event Date','Rep Text','Req Text'], keep='first', inplace=True, ignore_index=True)
+merged_df.drop(['DOB','Instance Number','scan_count','Laterality','Instance Number'], axis=1, inplace = True)
+
+
+#Export to excel
+merged_df.to_excel('scaphoid_master_indivpat.xlsx', index=False)
+
+
+
+
+
